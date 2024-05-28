@@ -1,23 +1,31 @@
 package com.miguelruivo.flutter.plugin.countrycodes.country_codes
 
-import android.os.Build
-import androidx.annotation.NonNull
+import android.R
+import java.util.Locale
+import androidx.annotation.NonNull;
 import io.flutter.embedding.engine.plugins.FlutterPlugin
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import io.flutter.plugin.common.MethodChannel.MethodCallHandler
 import io.flutter.plugin.common.MethodChannel.Result
-import java.util.Locale
+import io.flutter.plugin.common.PluginRegistry.Registrar
 
 /** CountryCodesPlugin */
-class CountryCodesPlugin : FlutterPlugin, MethodCallHandler {
-  private lateinit var channel: MethodChannel
-
+public class CountryCodesPlugin: FlutterPlugin, MethodCallHandler {
   override fun onAttachedToEngine(@NonNull flutterPluginBinding: FlutterPlugin.FlutterPluginBinding) {
-    channel = MethodChannel(flutterPluginBinding.binaryMessenger, "country_codes")
-    channel.setMethodCallHandler(this)
+    val channel = MethodChannel(flutterPluginBinding.getFlutterEngine().getDartExecutor(), "country_codes")
+    channel.setMethodCallHandler(CountryCodesPlugin());
   }
 
+  // This static function is optional and equivalent to onAttachedToEngine. It supports the old
+  // pre-Flutter-1.12 Android projects. You are encouraged to continue supporting
+  // plugin registration via this function while apps migrate to use the new Android APIs
+  // post-flutter-1.12 via https://flutter.dev/go/android-project-migration.
+  //
+  // It is encouraged to share logic between onAttachedToEngine and registerWith to keep
+  // them functionally equivalent. Only one of onAttachedToEngine or registerWith will be called
+  // depending on the user's project. onAttachedToEngine or registerWith must both be defined
+  // in the same class.
   companion object {
     @JvmStatic
     fun registerWith(registrar: Registrar) {
@@ -27,31 +35,28 @@ class CountryCodesPlugin : FlutterPlugin, MethodCallHandler {
   }
 
   override fun onMethodCall(@NonNull call: MethodCall, @NonNull result: Result) {
+
     when (call.method) {
-      "getLocale" -> result.success(listOf(Locale.getDefault().language, Locale.getDefault().country, getLocalizedCountryNames(call.arguments as? String)))
+      "getLocale" -> result.success(listOf(Locale.getDefault().language, Locale.getDefault().country, getLocalizedCountryNames(call.arguments as String?)))
       "getRegion" -> result.success(Locale.getDefault().country)
       "getLanguage" -> result.success(Locale.getDefault().language)
       else -> result.notImplemented()
     }
   }
 
-  private fun getLocalizedCountryNames(localeTag: String?): HashMap<String, String> {
-    val localizedCountries = HashMap<String, String>()
-    val deviceCountry = Locale.getDefault().toLanguageTag()
+  private fun getLocalizedCountryNames(localeTag: String?) : HashMap<String, String> {
+    var localizedCountries: HashMap<String,String> = HashMap()
+
+    val deviceCountry: String = Locale.getDefault().toLanguageTag();
 
     for (countryCode in Locale.getISOCountries()) {
-      val locale = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-        Locale.forLanguageTag(localeTag ?: deviceCountry)
-      } else {
-        Locale(localeTag ?: deviceCountry, countryCode)
-      }
-      val countryName = locale.getDisplayCountry(Locale.forLanguageTag(localeTag ?: deviceCountry))
-      localizedCountries[countryCode.uppercase()] = countryName ?: ""
+      val locale = Locale(localeTag ?: deviceCountry,countryCode)
+      var countryName: String? = locale.getDisplayCountry(Locale.forLanguageTag(localeTag ?: deviceCountry))
+      localizedCountries[countryCode.toUpperCase()] = countryName ?: "";
     }
     return localizedCountries
   }
 
   override fun onDetachedFromEngine(@NonNull binding: FlutterPlugin.FlutterPluginBinding) {
-    channel.setMethodCallHandler(null)
   }
 }
